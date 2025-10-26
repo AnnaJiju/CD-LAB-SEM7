@@ -1,79 +1,71 @@
 #include <stdio.h>
-#include <string.h>
+#include <ctype.h>
 
-int main() {
-    char stack[20], input[20];
-    int top = -1, i = 0;
+char expr[100];
+int idx = 0;  // current position in expression
 
-    // Operator precedence table
-    //       i    +    *    $
-    char prec[5][5] = {
-        {'>', '<', '<', '>'}, // i
-        {'>', '>', '<', '>'}, // +
-        {'>', '>', '>', '>'}, // *
-        {'<', '<', '<', 'A'}  // $
-    };
+int E(); // Expression
+int T(); // Term
+int F(); // Factor
 
-    char sym[] = {'i', '+', '*', '$'};
-
-    printf("Enter expression (use i for operand, end with $): ");
-    scanf("%s", input);
-
-    // Initialize stack with $
-    stack[++top] = '$';
-
-    printf("\nSTACK\t\tINPUT\t\tACTION\n");
-
-    while (1) {
-        // Print current stack and input
-        for (int j = 0; j <= top; j++)
-            printf("%c", stack[j]);
-        printf("\t\t%s\t\t", &input[i]);
-
-        int row = -1, col = -1;
-
-        // Find the corresponding row and column in the precedence table
-        for (int k = 0; k < 4; k++) {
-            if (stack[top] == sym[k]) row = k;
-            if (input[i] == sym[k]) col = k;
-        }
-
-        // Invalid symbol case
-        if (row == -1 || col == -1) {
-            printf("Reject\n");
-            break;
-        }
-
-        char action = prec[row][col];
-
-        // Accept condition
-        if (stack[top] == '$' && input[i] == '$') {
-            printf("Accept\n");
-            break;
-        }
-
-        // Perform actions based on precedence
-        if (action == '<' || action == '=') {
-            // SHIFT
-            stack[++top] = input[i++];
-            printf("Shift\n");
-        }
-        else if (action == '>') {
-            // REDUCE
-            if (stack[top] == 'i' || stack[top] == 'E') {
-                stack[top] = 'E';
-                printf("Reduce\n");
-            } else {
-                top--;
-                printf("Reduce\n");
-            }
-        }
-        else {
-            // REJECT (invalid relation)
-            printf("Reject\n");
-            break;
+// Expression: E -> T { + T | - T }
+int E() {
+    int result = T();
+    while (expr[idx] == '+' || expr[idx] == '-') {
+        char op = expr[idx];
+        idx++;
+        int val = T();
+        if (op == '+') {
+            result = result + val;
+        } else if (op == '-') {
+            result = result - val;
         }
     }
+    return result;
+}
+
+// Term: T -> F { * F | / F }
+int T() {
+    int result = F();
+    while (expr[idx] == '*' || expr[idx] == '/') {
+        char op = expr[idx];
+        idx++;
+        int val = F();
+        if (op == '*') {
+            result = result * val;
+        } else if (op == '/') {
+            result = result / val;
+        }
+    }
+    return result;
+}
+
+// Factor: F -> (E) | multi-digit number
+int F() {
+    int result = 0;
+    if (expr[idx] == '(') {
+        idx++;           // skip '('
+        result = E();    // evaluate inner expression
+        if (expr[idx] == ')') {
+            idx++;       // skip ')'
+        }
+    } 
+    else if (isdigit(expr[idx])) {
+        result = 0;
+        while (isdigit(expr[idx])) {   // read all digits of a multi-digit number
+            result = result * 10 + (expr[idx] - '0');
+            idx++;
+        }
+    }
+    return result;
+}
+
+int main() {
+    printf("Enter expression (no spaces): ");
+    scanf("%s", expr);
+
+    int result = E();       // start evaluating
+    printf("Result: %d\n", result);
 
     return 0;
 }

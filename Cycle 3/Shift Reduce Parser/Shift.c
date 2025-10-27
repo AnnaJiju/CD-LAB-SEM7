@@ -1,16 +1,10 @@
-#include <stdio.h>
-#include <string.h>
+hjnhubuhnm n#include <stdio.h>
+v fyu fv i#include <string.h>
 
 #define MAX 50
 
 char stack[MAX], input[MAX];
-char lhs[MAX][10], rhs[MAX][20];
-int prodCount;
-int top = -1, i = 0;
-
-void push(char c) {
-    stack[++top] = c;
-    stack[top + 1] = '\0';
+char lhs[MAX][10], rhs[MAX][2
 }
 
 void pop(int n) {

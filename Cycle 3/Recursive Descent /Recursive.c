@@ -1,85 +1,71 @@
 #include <stdio.h>
-#include <string.h>
 #include <ctype.h>
 
-char input[100];
-int i = 0, error = 0;
+char expr[100];
+int idx = 0;  // current position in expression
 
-void E();
-void Eprime();
-void T();
-void Tprime();
-void F();
+int E(); // Expression
+int T(); // Term
+int F(); // Factor
 
-void printStep(const char *rule) {
-    printf("Step: %-15s | Remaining input: %s\n", rule, &input[i]);
+// Expression: E -> T { + T | - T }
+int E() {
+    int result = T();
+    while (expr[idx] == '+' || expr[idx] == '-') {
+        char op = expr[idx];
+        idx++;
+        int val = T();
+        if (op == '+') {
+            result = result + val;
+        } else if (op == '-') {
+            result = result - val;
+        }
+    }
+    return result;
 }
 
-void E() {
-    printStep("E -> T E'");
-    T();
-    Eprime();
+// Term: T -> F { * F | / F }
+int T() {
+    int result = F();
+    while (expr[idx] == '*' || expr[idx] == '/') {
+        char op = expr[idx];
+        idx++;
+        int val = F();
+        if (op == '*') {
+            result = result * val;
+        } else if (op == '/') {
+            result = result / val;
+        }
+    }
+    return result;
 }
 
-void Eprime() {
-    if (input[i] == '+') {
-        printStep("E' -> + T E'");
-        i++;
-        T();
-        Eprime();
-    } else {
-        printStep("E' -> ε");
+// Factor: F -> (E) | multi-digit number
+int F() {
+    int result = 0;
+    if (expr[idx] == '(') {
+        idx++;           // skip '('
+        result = E();    // evaluate inner expression
+        if (expr[idx] == ')') {
+            idx++;       // skip ')'
+        }
+    } 
+    else if (isdigit(expr[idx])) {
+        result = 0;
+        while (isdigit(expr[idx])) {   // read all digits of a multi-digit number
+            result = result * 10 + (expr[idx] - '0');
+            idx++;
+        }
     }
-}
-
-void T() {
-    printStep("T -> F T'");
-    F();
-    Tprime();
-}
-
-void Tprime() {
-    if (input[i] == '*') {
-        printStep("T' -> * F T'");
-        i++;
-        F();
-        Tprime();
-    } else {
-        printStep("T' -> ε");
-    }
-}
-
-void F() {
-    if (input[i] == '(') {
-        printStep("F -> ( E )");
-        i++;
-        E();
-        if (input[i] == ')')
-            i++;
-        else
-            error = 1;
-    }
-    else if (isalpha(input[i])) {
-        printStep("F -> id");
-        i++;
-        while (isalnum(input[i]) || input[i] == '_')
-            i++;
-    }
-    else {
-        error = 1;
-    }
+    return result;
 }
 
 int main() {
-    printf("Enter an arithmetic expression:\n");
-    scanf("%s", input);
+    printf("Enter expression (no spaces): ");
+    scanf("%s", expr);
 
-    E();
-
-    if (strlen(input) == i && error == 0)
-        printf("\nAccepted..!!!\n");
-    else
-        printf("\nRejected..!!!\n");
+    int result = E();       // start evaluating
+    printf("Result: %d\n", result);
 
     return 0;
 }

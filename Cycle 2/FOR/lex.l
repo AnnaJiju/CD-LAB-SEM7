@@ -36,3 +36,7 @@ for                       return FOR;
 .                          return yytext[0];
 
 %%
+
+int yywrap(){
+  return 1;
+}

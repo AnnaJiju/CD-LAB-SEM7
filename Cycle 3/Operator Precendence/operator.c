@@ -1,129 +1,99 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MAX 100
-
-char stack[MAX], input[MAX];
-int top = -1;
-
-/* Terminals used in precedence table (must match order) */
-char symbols[] = {'+', '*', 'i', '(', ')', '$'};
-
-/* Operator precedence table */
-char prec[6][6] = {
-    //    +    *    i    (    )    $
-    /+/ {'>', '<', '<', '<', '>', '>'},
-    /*/ {'>', '>', '<', '<', '>', '>'},
-    /i/ {'>', '>', 'E', 'E', '>', '>'},
-    /(/ {'<', '<', '<', '<', '=', 'E'},
-    /)/ {'>', '>', 'E', 'E', '>', '>'},
-    /$/ {'<', '<', '<', '<', 'E', '='}
-};
-
-/* Push symbol onto stack */
-void push(char c) {
-    stack[++top] = c;
-}
-
-/* Display current stack and remaining input */
-void display(int i) {
-    for (int k = 0; k <= top; k++)
-        printf("%c", stack[k]);
-    printf("\t");
-
-    for (int k = i; k < strlen(input); k++)
-        printf("%c", input[k]);
-    printf("\t");
-}
-
-/* Return index of symbol in symbols array (for precedence table) */
-int getIndex(char c) {
-    for (int i = 0; i < 6; i++)
-        if (symbols[i] == c)
-            return i;
-    return -1;
-}
-
-/* Get index of the topmost terminal in the stack */
-int getTopTerminalIndex() {
-    for (int j = top; j >= 0; j--) {
-        int idx = getIndex(stack[j]);
-        if (idx != -1)
-            return idx;
-    }
-    return -1; // No terminal found
-}
-
-/* Attempt to reduce the top of the stack according to grammar rules */
-int reduce() {
-    // E + E or E * E → E
-    if (top >= 2 && stack[top] == 'E' &&
-        (stack[top - 1] == '+' || stack[top - 1] == '*') &&
-        stack[top - 2] == 'E') {
-        top -= 2;
-        stack[top] = 'E';
-        return 1;
-    }
-
-    // ( E ) → E
-    if (top >= 2 && stack[top] == ')' &&
-        stack[top - 1] == 'E' &&
-        stack[top - 2] == '(') {
-        top -= 2;
-        stack[top] = 'E';
-        return 1;
-    }
-
-    // i → E
-    if (top >= 0 && stack[top] == 'i') {
-        stack[top] = 'E';
-        return 1;
-    }
-    return 0; // No valid reduction
-}
-
 int main() {
-    int i = 0;
-    char action;
+    char stack[20], input[20];
+    int top = -1, i = 0;
 
-    printf("Enter the input string ending with $: ");
+    // Correct Operator precedence table
+    //          i    +    * $
+    char prec[4][4] = {
+        /* i */ {'R', '>', '>', '>'}, // R = Reject (i followed by i is invalid)
+        /* + */ {'<', '>', '<', '>'},
+        /* * */ {'<', '>', '>', '>'},
+        /* $ */ {'<', '<', '<', 'A'}  // A = Accept
+    };
+    // < : Shift
+    // > : Reduce
+    
+    char sym[] = {'i', '+', '*', '$'};
+
+    printf("Enter expression (use i for operand, end with $): ");
     scanf("%s", input);
 
-    push('$');
+    // Initialize stack with $
+    stack[++top] = '$';
 
-    printf("\nStack\tInput\tAction\n");
+    printf("\nSTACK\t\tINPUT\t\tACTION\n");
 
     while (1) {
-        display(i);
-        int row = getTopTerminalIndex(); // find nearest terminal on stack
-        int col = getIndex(input[i]);    // current input symbol
+        // Print current stack and input
+        for (int j = 0; j <= top; j++)
+            printf("%c", stack[j]);
+        printf("\t\t%s\t\t", &input[i]);
 
+        int row = -1, col = -1;
+
+        // Find the corresponding column (from input)
+        for (int k = 0; k < 4; k++) {
+            if (input[i] == sym[k]) col = k;
+        }
+
+        // --- FIXED: Find row (from stack's top-most terminal) ---
+        // This skips over 'E's to find the last operator or 'i'
+        int top_terminal_pos = top;
+        while (stack[top_terminal_pos] == 'E') {
+            top_terminal_pos--;
+        }
+        for (int k = 0; k < 4; k++) {
+            if (stack[top_terminal_pos] == sym[k]) row = k;
+        }
+
+        // Invalid symbol case
         if (row == -1 || col == -1) {
-            printf("Error (invalid symbol)\n");
+            printf("Reject (Invalid Symbol)\n");
             break;
         }
 
-        // Accept condition: stack = $E and input = $
-        if (input[i] == '$' && top == 1 && stack[0] == '$' && stack[1] == 'E') {
-            printf("Accept\n");
-            break;
-        }
+        char action = prec[row][col];
 
-        action = prec[row][col];
-
-        if ((action == '<' || action == '=') && input[i] != '$') {
+        // Perform actions based on precedence
+        if (action == '<') {
+            // SHIFT
+            stack[++top] = input[i++];
             printf("Shift\n");
-            push(input[i]);
-            i++;
-        } else if (action == '>') {
-            if (reduce()) {
-                printf("Reduce\n");
-            } else {
-                printf("Error (no valid reduction)\n");
+        } 
+        else if (action == '>') {
+            // --- FIXED: REDUCE ---
+            // Now correctly finds the handle to reduce
+            if (stack[top] == 'i') {
+                stack[top] = 'E'; // Reduce i -> E
+                printf("Reduce i -> E\n");
+            } 
+            // Check for E+E or E*E
+            else if (stack[top] == 'E' && 
+                     (stack[top - 1] == '+' || stack[top - 1] == '*') && 
+                     stack[top - 2] == 'E') 
+            {
+                char op = stack[top - 1]; // Get the operator
+                top -= 2; // Pop 'E' and 'operator'
+                // stack[top-2] (which is 'E') becomes the new stack[top]
+                printf("Reduce E%cE -> E\n", op);
+            } 
+            else {
+                // If we get > but don't have a valid handle, reject
+                printf("Reject (Invalid Handle)\n");
                 break;
             }
-        } else {
-            printf("Error (invalid precedence)\n");
+        } 
+        else if (action == 'A') {
+            // --- FIXED: ACCEPT ---
+            printf("Accept\n");
+            break;
+        } 
+        else { // 'R' or any other invalid state
+            // REJECT
+            printf("Reject (Invalid Precedence)\n");
             break;
         }
     }

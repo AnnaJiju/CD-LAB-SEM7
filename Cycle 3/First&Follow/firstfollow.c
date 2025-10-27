@@ -1,75 +1,101 @@
-#include<stdio.h>
-#include<math.h>
-#include<string.h>
-#include<ctype.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 
-int n,m=0,i=0,j=0;
-char a[10][10],f[10];
+int n;
+char prod[10][10];
+char firstSet[10], followSet[10];
+int m;
 
-void follow(char c);
-void first(char c);
-
-int main() {
-    int k;
-    char ch;
-
-    printf("Enter the no of productions:\n");
-    scanf("%d",&n);
-    printf("Enter the productions:\n");
-    for(i=0;i<n;i++)
-        scanf("%s%c",a[i],&ch);
-
-    // Find First and Follow for all unique non-terminals
-    for(k=0;k<n;k++) {
-        char nt = a[k][0];
-        m=0;
-        strcpy(f,"");
-        first(nt);
-        printf("First(%c)={",nt);
-        for(i=0;i<m;i++)
-            printf("%c, ",f[i]);
-        printf("}\n");
-
-        m=0;
-        strcpy(f,"");
-        follow(nt);
-        printf("Follow(%c)={",nt);
-        for(i=0;i<m;i++)
-            printf("%c ,",f[i]);
-        printf("}\n");
-    }
-
-    return 0;
+// helper: add symbol to set if not already there
+void addToSet(char *arr, char c) {
+    for (int i = 0; i < strlen(arr); i++)
+        if (arr[i] == c) return;
+    int len = strlen(arr);
+    arr[len] = c;
+    arr[len + 1] = '\0';
 }
 
-void first(char c) {
-    int k;
-    if(!isupper(c))
-        f[m++]=c;
-    for(k=0;k<n;k++) {
-        if(a[k][0]==c) {
-            if(a[k][2]=='$')
-                follow(a[k][0]);
-            else if(islower(a[k][2]) || !isupper(a[k][2]))
-                f[m++]=a[k][2];
-            else
-                first(a[k][2]);
-        }
-    }
-}
+void FIRST(char c);
+void FOLLOW(char c);
 
-void follow(char c) {
-    if(a[0][0]==c)
-        f[m++]='$';
-    for(i=0;i<n;i++) {
-        for(j=2;j<strlen(a[i]);j++) {
-            if(a[i][j]==c) {
-                if(a[i][j+1]!='\0')
-                    first(a[i][j+1]);
-                if(a[i][j+1]=='\0' && c!=a[i][0])
-                    follow(a[i][0]);
+void FIRST(char c) {
+    if (!isupper(c)) { // terminal
+        addToSet(firstSet, c);
+        return;
+    }
+
+    for (int i = 0; i < n; i++) {
+        if (prod[i][0] == c) {
+            if (prod[i][2] == 'e') {
+                addToSet(firstSet, 'e');
+            } else {
+                int j = 2;
+                while (prod[i][j] != '\0') {
+                    if (prod[i][j] == c) break;
+                    FIRST(prod[i][j]);
+                    if (strchr(firstSet, 'e') == NULL)
+                        break;
+                    j++;
+                }
             }
         }
+    }
+}
+
+void FOLLOW(char c) {
+    if (prod[0][0] == c)
+        addToSet(followSet, '$');
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 2; j < strlen(prod[i]); j++) {
+            if (prod[i][j] == c) {
+                if (prod[i][j + 1] != '\0') {
+                    char next = prod[i][j + 1];
+                    char temp[10] = "";
+                    strcpy(firstSet, "");
+                    FIRST(next);
+
+                    for (int k = 0; k < strlen(firstSet); k++) {
+                        if (firstSet[k] != 'e')
+                            addToSet(followSet, firstSet[k]);
+                    }
+
+                    if (strchr(firstSet, 'e'))
+                        FOLLOW(prod[i][0]);
+                } else if (prod[i][0] != c)
+                    FOLLOW(prod[i][0]);
+            }
+        }
+    }
+}
+
+int main() {
+    printf("Enter the number of productions:\n");
+    scanf("%d", &n);
+
+    printf("Enter the productions (use e for epsilon):\n");
+    for (int i = 0; i < n; i++)
+        scanf("%s", prod[i]);
+
+    char done[10] = "";
+    for (int i = 0; i < n; i++) {
+        char nt = prod[i][0];
+        if (strchr(done, nt)) continue; // skip duplicates
+        strncat(done, &nt, 1);
+
+        strcpy(firstSet, "");
+        FIRST(nt);
+        printf("FIRST(%c) =  ", nt);
+        for (int j = 0; j < strlen(firstSet); j++)
+            printf("\t%c ", firstSet[j]);
+        printf("\t\n");
+
+        strcpy(followSet, "");
+        FOLLOW(nt);
+        printf("FOLLOW(%c) =  ", nt);
+        for (int j = 0; j < strlen(followSet); j++)
+            printf("\t%c ", followSet[j]);
+        printf("\t\n\n");
     }
 }

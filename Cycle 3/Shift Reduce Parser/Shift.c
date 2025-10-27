@@ -1,86 +1,75 @@
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 
-#define MAX 100
+#define MAX 50
 
-// Grammar:
-// S -> S + S
-// S -> S * S
-// S -> id
+char stack[MAX], input[MAX];
+char lhs[MAX][10], rhs[MAX][20];
+int prodCount;
+int top = -1, i = 0;
 
-int check_reduce(char stack[], int *top, char action[]) {
-    if (*top >= 1 && stack[*top] == 'd' && stack[*top - 1] == 'i') {
-        stack[*top - 1] = 'S';   // Reduce id -> S
-        (*top)--;
-        strcpy(action, "Reduce S->id");
-        return 1;
+void push(char c) {
+    stack[++top] = c;
+    stack[top + 1] = '\0';
+}
+
+void pop(int n) {
+    top -= n;
+    stack[top + 1] = '\0';
+}
+
+void check() {
+    for (int p = 0; p < prodCount; p++) {
+        int len = strlen(rhs[p]);
+        if (top + 1 >= len) {
+            // Compare last 'len' characters of stack with rhs
+            if (strncmp(&stack[top - len + 1], rhs[p], len) == 0) {
+                pop(len);
+                push(lhs[p][0]);
+                printf("\tReduce: %s->%s\n", lhs[p], rhs[p]);
+                // After a reduction, check again (nested reductions)
+                check();
+                break;
+            }
+        }
     }
-    if (*top >= 2 && stack[*top] == 'S' && stack[*top - 1] == '+' && stack[*top - 2] == 'S') {
-        stack[*top - 2] = 'S';   // Reduce S+S -> S
-        *top -= 2;
-        strcpy(action, "Reduce S->S+S");
-        return 1;
-    }
-    if (*top >= 2 && stack[*top] == 'S' && stack[*top - 1] == '*' && stack[*top - 2] == 'S') {
-        stack[*top - 2] = 'S';   // Reduce S*S -> S
-        *top -= 2;
-        strcpy(action, "Reduce S->S*S");
-        return 1;
-    }
-    return 0;
 }
 
 int main() {
-    char input[MAX], stack[MAX], action[50];
-    int i = 0, top = -1, step = 1;
+    printf("Dynamic Shift-Reduce Parser\n");
+    printf("Enter number of productions: ");
+    scanf("%d", &prodCount);
+    getchar();
 
-    printf("Enter input string (e.g., id+id*id): ");
-    fgets(input, MAX, stdin);
-
-    // Remove spaces from input
-    char cleaned[MAX];
-    int j = 0;
-    for (int k = 0; input[k]; k++) {
-        if (!isspace((unsigned char)input[k]))
-            cleaned[j++] = input[k];
+    printf("Enter productions (e.g., E->E+E):\n");
+    for (int j = 0; j < prodCount; j++) {
+        char temp[30];
+        fgets(temp, sizeof(temp), stdin);
+        temp[strcspn(temp, "\n")] = 0;
+        // Split into LHS and RHS
+        lhs[j][0] = temp[0];
+        lhs[j][1] = '\0';
+        strcpy(rhs[j], &temp[3]);
     }
-    cleaned[j] = '\0';
 
-    strcat(cleaned, "$");  // append end marker
+    printf("\nEnter the input expression: ");
+    fgets(input, sizeof(input), stdin);
+    input[strcspn(input, "\n")] = 0;
 
-    stack[0] = '\0';  // initialize stack
+    printf("\nSTACK\tINPUT\tACTION\n");
+    printf("-------------------------------\n");
 
-    printf("\n%-5s %-20s %-20s %-20s\n", "Step", "Stack", "Input Buffer", "Parsing Action");
-    printf("--------------------------------------------------------------------------\n");
-
-    while (1) {
-        printf("%-5d %-20s %-20s ", step++, stack, cleaned + i);
-
-        // ✅ accept condition
-        if (strcmp(stack, "S") == 0 && cleaned[i] == '$') {
-            printf("Accept\n");
-            break;
-        }
-
-        // Try reduce
-        if (check_reduce(stack, &top, action)) {
-            stack[top + 1] = '\0';
-            printf("%-20s\n", action);
-            continue;
-        }
-
-        // If at end of input and cannot reduce -> error
-        if (cleaned[i] == '$') {
-            printf("Error: invalid string\n");
-            break;
-        }
-
-        // Otherwise shift
-        stack[++top] = cleaned[i++];
-        stack[top + 1] = '\0';
-        strcpy(action, "Shift");
-        printf("%-20s\n", action);
+    while (input[i] != '\0') {
+        push(input[i]);
+        printf("%s\t%s\tShift '%c'\n", stack, &input[i + 1], input[i]);
+        i++;
+        check();
     }
+
+    if (top == 0 && stack[top] == lhs[0][0])
+        printf("\nAccepted ✅\n");
+    else
+        printf("\nRejected ❌\n");
+
     return 0;
 }

@@ -1,99 +1,96 @@
 #include <stdio.h>
 #include <string.h>
 
+char input[20], stack[20];
+int top = -1, i = 0;
+
+// Operator precedence table
+//        i    +    *    $
+char prec[4][4] = {
+    {'R', '>', '>', '>'},  // i
+    {'<', '>', '<', '>'},  // +
+    {'<', '>', '>', '>'},  // *
+    {'<', '<', '<', 'A'}   // $
+};
+
+char symb[4] = {'i', '+', '*', '$'};
+
 int main() {
-    char stack[20], input[20];
-    int top = -1, i = 0;
-
-    // Correct Operator precedence table
-    //          i    +    * $
-    char prec[4][4] = {
-        /* i */ {'R', '>', '>', '>'}, // R = Reject (i followed by i is invalid)
-        /* + */ {'<', '>', '<', '>'},
-        /* * */ {'<', '>', '>', '>'},
-        /* $ */ {'<', '<', '<', 'A'}  // A = Accept
-    };
-    // < : Shift
-    // > : Reduce
-    
-    char sym[] = {'i', '+', '*', '$'};
-
-    printf("Enter expression (use i for operand, end with $): ");
+    printf("Enter the input: ");
     scanf("%s", input);
 
-    // Initialize stack with $
     stack[++top] = '$';
 
-    printf("\nSTACK\t\tINPUT\t\tACTION\n");
+    printf("\nStack\t\tInput\t\tAction\n");
 
     while (1) {
-        // Print current stack and input
+        // Print stack
         for (int j = 0; j <= top; j++)
             printf("%c", stack[j]);
         printf("\t\t%s\t\t", &input[i]);
 
         int row = -1, col = -1;
 
-        // Find the corresponding column (from input)
+        // Find column (current input symbol)
         for (int k = 0; k < 4; k++) {
-            if (input[i] == sym[k]) col = k;
+            if (input[i] == symb[k]) {
+                col = k;
+                break;
+            }
         }
 
-        // --- FIXED: Find row (from stack's top-most terminal) ---
-        // This skips over 'E's to find the last operator or 'i'
-        int top_terminal_pos = top;
-        while (stack[top_terminal_pos] == 'E') {
-            top_terminal_pos--;
-        }
+        // Find row (top-most terminal in stack)
+        int pos = top;
+        while (stack[pos] == 'E' && pos >= 0)
+            pos--;
         for (int k = 0; k < 4; k++) {
-            if (stack[top_terminal_pos] == sym[k]) row = k;
+            if (stack[pos] == symb[k]) {
+                row = k;
+                break;
+            }
         }
 
-        // Invalid symbol case
         if (row == -1 || col == -1) {
-            printf("Reject (Invalid Symbol)\n");
+            printf("Rejected (Invalid symbol)\n");
             break;
         }
 
         char action = prec[row][col];
 
-        // Perform actions based on precedence
         if (action == '<') {
-            // SHIFT
             stack[++top] = input[i++];
             printf("Shift\n");
         } 
         else if (action == '>') {
-            // --- FIXED: REDUCE ---
-            // Now correctly finds the handle to reduce
+            // Perform reductions
             if (stack[top] == 'i') {
-                stack[top] = 'E'; // Reduce i -> E
-                printf("Reduce i -> E\n");
+                stack[top] = 'E';
+                printf("Reduce E -> i\n");
             } 
-            // Check for E+E or E*E
-            else if (stack[top] == 'E' && 
-                     (stack[top - 1] == '+' || stack[top - 1] == '*') && 
-                     stack[top - 2] == 'E') 
-            {
-                char op = stack[top - 1]; // Get the operator
-                top -= 2; // Pop 'E' and 'operator'
-                // stack[top-2] (which is 'E') becomes the new stack[top]
-                printf("Reduce E%cE -> E\n", op);
+            else if (stack[top] == 'E' && stack[top - 1] == '+' && stack[top - 2] == 'E') {
+                top -= 2;
+                printf("Reduce E -> E+E\n");
+            } 
+            else if (stack[top] == 'E' && stack[top - 1] == '*' && stack[top - 2] == 'E') {
+                top -= 2;
+                printf("Reduce E -> E*E\n");
             } 
             else {
-                // If we get > but don't have a valid handle, reject
-                printf("Reject (Invalid Handle)\n");
+                printf("Rejected (Invalid reduction)\n");
                 break;
             }
         } 
         else if (action == 'A') {
-            // --- FIXED: ACCEPT ---
-            printf("Accept\n");
-            break;
+            if (stack[top] == 'E' && stack[top - 1] == '$' && input[i] == '$') {
+                printf("Accept\n");
+                break;
+            } else {
+                printf("Rejected\n");
+                break;
+            }
         } 
-        else { // 'R' or any other invalid state
-            // REJECT
-            printf("Reject (Invalid Precedence)\n");
+        else {
+            printf("Rejected\n");
             break;
         }
     }

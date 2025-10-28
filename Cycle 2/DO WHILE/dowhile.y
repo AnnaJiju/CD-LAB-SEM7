@@ -7,35 +7,32 @@
 %}
 
 %token DO WHILE ID NUM LE GE EQ NE OR AND INCR DECR
-%right "="
+%right '='
 %left OR AND
-%left ">" "<" LE GE EQ NE
-%left "+" "-"
-%left "*" "/"
+%left '>' '<' LE GE EQ NE
+%left '+' '-'
+%left '*' '/'
 %right UNIMINUS
-%left "!"
+%left '!'
 
 %%
 
-S: ST { printf("Accepted\n"); exit(0); };
+S: ST { printf("Accepted\n"); YYACCEPT; };
 
-ST: DO DEF WHILE "(" E ")" ';'   /* do-while loop syntax */
+ST: DO DEF WHILE '(' E ')' ';'
+  | ';'
   ;
 
-DEF: "{" BODY "}"
-    | E
-    | ST
-    |
-    ;
+DEF: '{' BODY '}'
+   ;
 
-BODY: BODY BODY
-    | E
+BODY: BODY ST
     | ST
-    |
+    | /* empty */
     ;
 
 E: ID '=' E
-  | ID "=" NUM
+  | ID '=' NUM
   | E '+' E
   | E '-' E
   | E '*' E
@@ -56,7 +53,7 @@ E: ID '=' E
 
 %%
 
-int main()
+int main(void)
 {
     printf("Enter the DO-WHILE loop: ");
     yyparse();

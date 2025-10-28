@@ -1,17 +1,41 @@
 %{
-   #include "while.tab.h" 
+    #include "while.tab.h"
 %}
 
-%%
-"while" {return WHILE;}
-"(" {return LPAR;}
-")" {return RPAR;}
-">" {return LT;}
-"<" {return GT;}
-[0-9]+ {return NUMBER;}
-[a-zA-Z]+ {return ID;}
+alpha   [A-Za-z]
+digit   [0-9]
 
 %%
-int yywrap(){
+
+while                     return WHILE;
+{digit}+                  return NUM;
+{alpha}({alpha}|{digit})* return ID;
+"<="                      return LE;
+">="                      return GE;
+"++"                      return INCR;
+"--"                      return DECR;
+"=="                      return EQ;
+"!="                      return NE;
+"||"                      return OR;
+"&&"                      return AND;
+"="                       return '=';
+"<"                       return '<';
+">"                       return '>';
+"+"                       return '+';
+"-"                       return '-';
+"*"                       return '*';
+"/"                       return '/';
+"("                       return '(';
+")"                       return ')';
+"{"                       return '{';
+"}"                       return '}';
+";"                       return ';';
+[ \t\n]+                  ;      /* ignore whitespace */
+.                         return yytext[0];
+
+%%
+
+int yywrap()
+{
     return 1;
 }
